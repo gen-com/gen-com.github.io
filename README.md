@@ -4,6 +4,8 @@
 
 ## 개요
 
+<img src="/images/main_screen.png" width="60%" height="60%" title="메인 화면" alt="메인 화면"></img>
+
 관심있는 키워드에 대한 뉴스를 볼 수 있도록 합니다.
 
 키워드로 네이버 검색을 수행하며, 키워드별 뉴스 요청은 병렬로 수행해 효율을 올립니다.
@@ -16,6 +18,8 @@
 
 ## 키워드와 사용자 정보
 
+<img src="/images/keyword_editing.png" width="60%" height="60%" title="키워드 관리" alt="키워드 관리"></img>
+
 키워드는 순서를 가집니다.
 
 키워드는 삭제하거나 순서를 변경할 수 있습니다.
@@ -25,6 +29,8 @@
 뉴스의 기간을 변경하면 이를 적용합니다.
 
 ## 뉴스
+
+<img src="/images/news_search.png" width="60%" height="60%" title="뉴스 검색" alt="뉴스 검색"></img>
 
 키워드를 추가하기 위해서는 유효한 뉴스 검색 결과가 있어야 합니다.
 
