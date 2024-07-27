@@ -8,7 +8,6 @@ date: 2024-07-24 13:00:00 +0900
 
 또 부작용을 허용하지 않는 순수함수를 지향하여 동시에 여러 스레드에서 문제 없이 동작하는 프로그램을 쉽게 작성할 수 있습니다.
 
-![Screenshot 2023-08-20 at 23.34.43.png](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/5f2d3266-bcc0-47a2-839d-cbaa43decb9b/Screenshot_2023-08-20_at_23.34.43.png)
 
 객체 지향 프로그래밍 패러다임은 객체를 중심으로 생각하고 작성하는 것입니다.
 
