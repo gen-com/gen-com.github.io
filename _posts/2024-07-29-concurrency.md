@@ -64,12 +64,163 @@ date: 2024-07-29 10:00:00 +0900
 
 ## GCD
 
-main 스레드와 백그라운드 스레드.
+애플에서 동시성을 위해서 제공하는 라이브러리 중 하나가 GCD 입니다.
 
-sync vs async, serial vs concurrent
+### Dispatch Queue
 
-## async/await
+디스패치 큐는 작업(클로저)을 받을 수 있는 구성체입니다.
+
+그리고 스레드를 가져와서 받은 작업을 처리합니다.
+
+디스패치 큐에 있는 작업을 모두 수행하면 가지고 있던 스레드를 내놓습니다.
+
+### Run Loops
+
+사용자의 입력, 타이머 등을 처리하는 객체입니다.
+
+시스템이 필요하에 각 스레드에 생성합니다.
+
+### Work execution
+
+할당된 작업을 수행하는 데는 두가지 방식이 있습니다.
+
+#### Asynchronous
+
+큐에 여러 작업을 할당하는 작업을 스레드로 수행합니다.
+
+이때 할당을 위한 스레드는 봉쇄되지 않고 완료 후 시스템으로 돌아갑니다.
+
+이후에 큐는 자신에게 할당된 작업을 수행할 스레드를 가져옵니다.
+
+그리고 하나씩 수행을 합니다.
+
+![GCD Async](/assets/image/gcd_async.png)
+
+모든 작업을 완료하면 시스템에 스레드를 돌려줍니다.
+
+#### Synchronous
+
+앞선 예시와 비슷한 상황에서 이번에는 동기적인 작업을 처리하려 합니다.
+
+역시 작업을 할당하는데 스레드를 사용하며 이번에는 해당 작업이 완료되기 전까지는 **스레드는 봉쇄**됩니다.
+
+큐에는 작업 대신 플레이스 홀더를 할당합니다.
+
+![GCD Async](/assets/image/gcd_sync_1.png)
+
+순서대로 작업을 수행하고 플레이스 홀더에 도달하면 큐는 봉쇄되었던 스레드로 제어를 옮깁니다.
+
+![GCD Async](/assets/image/gcd_sync_2.png)
+
+동기적 작업을 완료하고 다시 이전 스레드로 돌아가 남은 작업을 마무리 합니다.
+
+모든 작업이 마무리되면 스레드들을 시스템에 돌려줍니다.
 
 # 데이터 경쟁
 
+동시성 프로그래밍을 작성할 때 가장 필수적인 것은 데이터 경쟁을 피하는 것입니다.
+
+데이터 경쟁은 두개의 이상의 쓰레드가 동시에 같은 데이터에 접근하고, 하나 이상이 쓰기 작업을 할 때 발생합니다.
+데이터 경쟁은 사소하게 발생하지만, 디버그에는 악명높게 어렵습니다.
+
+여기 간단한 카운터 클래스가 있습니다.
+
+```swift
+class Counter {
+        var value = 0
+
+        func increment() -> Int {
+                value = value + 1
+                return value
+        }
+}
+```
+
+`increment` 메소드는 `value`에 1을 더하고 반환합니다.
+
+```swift
+let counter = Counter()
+
+Task.detached {
+    print(counter.increment()) // data race
+}
+
+Task.detached {
+    print(counter.increment()) // data race
+}
+```
+
+두 동시성 작업으르 `counter` 인스턴스의 `increment`를 호출한다고 해봅시다. 실행의 시점에 대해 결과가 달라질 수 있어 예측할 수 없습니다.
+
+**데이터 경쟁은 공유되면서 변화될 수 있는 상태에 대해 발생합니다.**
+
+따라서 둘 조건중 하나라도 불만족 한다면 데이터 경쟁을 발생하지 않습니다.
+
+데이터 경쟁을 막는 방법중 하나는 값 타입 문법을 활용하는 것입니다. 값 타입은 로컬 범위에서만 변화가 가능합니다. `let`을 통해 상수화한다면 변화 자체를
+차단할 수 있습니다.
+
+사실 Swift는 값 타입 문법이 추론하기 쉽고 안전하기 때문에, 이를 활용하는 것을 권장하고 있습니다.
+
+배열이 값 타입이기에 예시로 적용해 봅시다.
+
+```swift
+var array1 = [1, 2]
+var array2 = array1
+
+array1.append(3)
+array2.append(4)
+
+print(array1)        // [1, 2, 3]
+print(array2)        // [1, 2, 4]
+```
+
+`array1`을 만든 다음에 `array2`에 복사합니다. 그리고 각 배열에 원소를 추가합니다.
+
+각 배열은 초기화 단계에서의 원소와 각각 추가된 원소를 가지고 있습니다.
+대부분의 Swift 기본 라이브러리는 값 타입 문법을 사용합니다.
+
+이제 값 타입이 데이터 경쟁 문제를 해결할 수 있는지 알아봅시다.
+
+```swift
+**struct** Counter {
+    var value = 0
+
+    mutating func increment() -> Int {
+        value = value + 1
+        return value
+    }
+}
+
+**let** counter = Counter()
+
+Task.detached {
+    **var counter = counter**
+    print(counter.increment()) // always prints 1
+}
+
+Task.detached {
+    **var counter = counter**
+    print(counter.increment()) // always prints 1
+}
+```
+
+카운터 클래스를 구조체로 변경합니다. 그리고 인스턴스를 `let`으로 할당합니다.
+
+`counter`는 상수이므로 변경을 허용하지 않습니다. 따라서 각 task의 로컬 `counter` 변수에 복사를 해서 수행하려 합니다. 그랬을 때 우리는 항상 1이라는
+결과를 얻습니다.
+
+데이터 경쟁을 피하기는 했지만, 위는 우리가 원하는 결과가 아닙니다. 많은 상황에 공유되면서 변화하는 값이 필요할 수 있습니다.
+
+동시성 프로그래밍에서 그런 값을 사용하기 위해서는 데이터 경쟁이 발생하지 않도록 **동기화(synchronization) 작업**이 필요합니다.
+
+이를 위해 `Atomics`, `Locks`, `Serial dispatch queues` 와 같은 도구가 존재합니다.
+
+각각은 장점이 있지만, 하나의 **치명적인 단점**이 있습니다.
+
+정확히 사용하기 위해서 매번 사용할 때 마다 **세심한 구현이 필요**합니다.
+
+그렇지 않으면 바로 데이터 경쟁 상태와 만나게 됩니다.
+
 # 참고
+
+[Concurrent Programming with GCD in Swift 3](https://developer.apple.com/wwdc16/720)
